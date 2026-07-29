@@ -11,7 +11,7 @@ import { Button } from './Button'
 import { updateSession } from '@/app/actions/sessions'
 import { assertValidSessionDates } from '@/lib/session-validation'
 import { computeDateEnd, exactDurationFromDates } from '@/lib/session-duration'
-import type { Session } from '@/lib/types'
+import type { LocationType, Session } from '@/lib/types'
 
 interface EditSessionFormProps {
   session: Session
@@ -23,6 +23,7 @@ export function EditSessionForm({ session, onCancel, onSave }: EditSessionFormPr
   const router = useRouter()
   const [loading, setLoading] = useState(false)
   const [error, setError] = useState<string | null>(null)
+  const [locationType, setLocationType] = useState(session.location_type)
 
   // Prefill with the stored duration; if it's off the 30-minute grid (legacy
   // data) it's surfaced as an extra option so saving an unrelated edit never
@@ -47,7 +48,11 @@ export function EditSessionForm({ session, onCancel, onSave }: EditSessionFormPr
         description: formData.get('description')?.toString() || null,
         date_start: dateStart,
         date_end: dateEnd,
-        location_type: formData.get('location_type') as 'MS_TEAMS' | 'IN_PERSON' | 'HYBRID',
+        location_type: locationType,
+        teams_meeting_url:
+          locationType === 'MS_TEAMS' || locationType === 'HYBRID'
+            ? formData.get('teams_meeting_url')?.toString() || null
+            : null,
       })
 
       router.refresh()
@@ -91,16 +96,34 @@ export function EditSessionForm({ session, onCancel, onSave }: EditSessionFormPr
           name="duration"
           defaultMinutes={storedDuration || 60}
           extraOptionMinutes={storedDuration || undefined}
+          allowFullDay
           required
         />
       </div>
 
-      <Select label="Location Type" name="location_type" defaultValue={session.location_type} required>
+      <Select
+        label="Location Type"
+        value={locationType}
+        onChange={(event) =>
+          setLocationType(event.target.value as LocationType)
+        }
+        required
+      >
         <option value="JITSI">Petrios Meet (Video)</option>
         <option value="MS_TEAMS">MS Teams</option>
         <option value="IN_PERSON">In Person</option>
         <option value="HYBRID">Hybrid</option>
       </Select>
+
+      {locationType === 'MS_TEAMS' || locationType === 'HYBRID' ? (
+        <Input
+          label="MS Teams Meeting URL"
+          name="teams_meeting_url"
+          type="url"
+          defaultValue={session.teams_meeting_url || ''}
+          placeholder="https://teams.microsoft.com/..."
+        />
+      ) : null}
 
       <div className="flex flex-col sm:flex-row gap-4">
         <Button type="submit" disabled={loading} className="w-full sm:w-auto">

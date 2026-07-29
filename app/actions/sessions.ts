@@ -5,7 +5,13 @@ import { requireAuth, requireDepartmentModerator, requireOrg } from '@/lib/auth'
 import {
   assertSessionCanBePublished,
   assertValidSessionDates,
+  normalizeSessionMeetingUrl,
 } from '@/lib/session-validation'
+import {
+  computeDateEnd,
+  isAllowedNewSessionDuration,
+} from '@/lib/session-duration'
+import { MAX_SESSION_OCCURRENCES } from '@/lib/session-recurrence'
 import type { LocationType, Session, SessionStatus } from '@/lib/types'
 import * as sessionsDb from '@/lib/db/sessions'
 import * as slotsDb from '@/lib/db/teaching-slots'
@@ -17,31 +23,60 @@ export async function createSession(sessionData: {
   department_id: string
   title: string
   description?: string
-  date_start: string
-  date_end: string
+  date_starts: string[]
+  duration_mins: number
   location_type: LocationType
+  teams_meeting_url?: string | null
   session_type?: string
 }) {
   const userId = await requireAuth()
   const orgId = await requireOrg()
   await requireDepartmentModerator(sessionData.department_id)
-  assertValidSessionDates(sessionData.date_start, sessionData.date_end)
+  if (!isAllowedNewSessionDuration(sessionData.duration_mins)) {
+    throw new Error('Choose a duration between 30 minutes and 4 hours, or Full day')
+  }
+  if (
+    sessionData.date_starts.length === 0 ||
+    sessionData.date_starts.length > MAX_SESSION_OCCURRENCES
+  ) {
+    throw new Error(`Create between 1 and ${MAX_SESSION_OCCURRENCES} sessions at a time`)
+  }
 
-  const session = await sessionsDb.insertSession({
-    orgId,
-    departmentId: sessionData.department_id,
-    title: sessionData.title,
-    description: sessionData.description ?? null,
-    dateStart: sessionData.date_start,
-    dateEnd: sessionData.date_end,
-    locationType: sessionData.location_type,
-    sessionType: sessionData.session_type ?? null,
-    createdBy: userId,
+  const dateStarts = Array.from(new Set(sessionData.date_starts))
+  if (dateStarts.length !== sessionData.date_starts.length) {
+    throw new Error('Repeated session dates must be unique')
+  }
+
+  const meetingUrl =
+    sessionData.location_type === 'MS_TEAMS' ||
+    sessionData.location_type === 'HYBRID'
+      ? normalizeSessionMeetingUrl(sessionData.teams_meeting_url)
+      : null
+
+  const occurrences = dateStarts.map((dateStart) => {
+    const dateEnd = computeDateEnd(dateStart, sessionData.duration_mins)
+    assertValidSessionDates(dateStart, dateEnd)
+    return { dateStart, dateEnd }
   })
+
+  const sessions = await sessionsDb.insertSessions(
+    occurrences.map(({ dateStart, dateEnd }) => ({
+      orgId,
+      departmentId: sessionData.department_id,
+      title: sessionData.title,
+      description: sessionData.description ?? null,
+      dateStart,
+      dateEnd,
+      locationType: sessionData.location_type,
+      teamsMeetingUrl: meetingUrl,
+      sessionType: sessionData.session_type ?? null,
+      createdBy: userId,
+    }))
+  )
 
   revalidatePath('/dashboard')
   revalidatePath(`/departments/${sessionData.department_id}/sessions`)
-  return session
+  return { created: sessions.length }
 }
 
 export async function getSessionsForOrg(orgId: string, departmentId?: string) {
@@ -60,6 +95,15 @@ export async function getSession(id: string) {
 
 export async function updateSession(id: string, updates: Partial<Session>) {
   const orgId = await requireOrg()
+  const normalizedUpdates =
+    updates.teams_meeting_url === undefined
+      ? updates
+      : {
+          ...updates,
+          teams_meeting_url: normalizeSessionMeetingUrl(
+            updates.teams_meeting_url
+          ),
+        }
 
   const scope = await sessionsDb.findSessionScope(id, orgId)
   if (!scope) {
@@ -68,9 +112,9 @@ export async function updateSession(id: string, updates: Partial<Session>) {
 
   await requireDepartmentModerator(scope.department_id)
 
-  const nextDateStart = updates.date_start ?? scope.date_start
-  const nextDateEnd = updates.date_end ?? scope.date_end
-  const nextStatus = updates.status ?? scope.status
+  const nextDateStart = normalizedUpdates.date_start ?? scope.date_start
+  const nextDateEnd = normalizedUpdates.date_end ?? scope.date_end
+  const nextStatus = normalizedUpdates.status ?? scope.status
 
   assertValidSessionDates(nextDateStart, nextDateEnd)
 
@@ -78,7 +122,11 @@ export async function updateSession(id: string, updates: Partial<Session>) {
     assertSessionCanBePublished(nextDateEnd)
   }
 
-  const session = await sessionsDb.updateSessionById(id, orgId, updates)
+  const session = await sessionsDb.updateSessionById(
+    id,
+    orgId,
+    normalizedUpdates
+  )
 
   // Fire-and-forget integration event on the DRAFT -> PUBLISHED transition.
   if (nextStatus === 'PUBLISHED' && scope.status !== 'PUBLISHED') {
@@ -98,7 +146,9 @@ export async function updateSession(id: string, updates: Partial<Session>) {
 }
 
 export async function updateSessionMeetingUrl(sessionId: string, meetingUrl: string) {
-  return updateSession(sessionId, { teams_meeting_url: meetingUrl })
+  return updateSession(sessionId, {
+    teams_meeting_url: normalizeSessionMeetingUrl(meetingUrl),
+  })
 }
 
 export async function updateSessionStatus(sessionId: string, status: SessionStatus) {

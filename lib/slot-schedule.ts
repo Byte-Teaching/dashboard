@@ -69,6 +69,8 @@ export const SLOT_SPLIT_OPTIONS = [10, 15, 20] as const
 /** Slots at or under this duration render as "Lightning" — one topic,
  *  low stakes, aimed at first-time teachers. */
 export const LIGHTNING_SLOT_MAX_MINS = 20
+export const SCHEDULING_DAY_START = '08:00'
+export const SCHEDULING_DAY_END = '17:30'
 
 /**
  * Split one day's slot range into back-to-back micro-slots. Applied AFTER
@@ -101,10 +103,35 @@ export function isLightningSlot(slot: { date_start: string; date_end: string }):
 }
 
 /** Time-of-day options ('HH:mm') matching DateTimePicker's format. */
-export function listSlotTimeOptions(intervalMinutes = 15): string[] {
+export function listSlotTimeOptions(
+  intervalMinutes = 15,
+  startTime = SCHEDULING_DAY_START,
+  endTime = SCHEDULING_DAY_END
+): string[] {
+  if (!Number.isInteger(intervalMinutes) || intervalMinutes <= 0) {
+    throw new Error('Time interval must be a positive whole number')
+  }
+  if (!TIME_RE.test(startTime) || !TIME_RE.test(endTime)) {
+    throw new Error('Scheduling times must use HH:mm')
+  }
+
+  const toMinutes = (value: string) => {
+    const [hours, minutes] = value.split(':').map(Number)
+    return hours * 60 + minutes
+  }
+  const startMinutes = toMinutes(startTime)
+  const endMinutes = toMinutes(endTime)
+  if (endMinutes < startMinutes) {
+    throw new Error('Scheduling end time must not be before the start time')
+  }
+
   const pad = (n: number) => n.toString().padStart(2, '0')
   const options: string[] = []
-  for (let minutes = 0; minutes < 24 * 60; minutes += intervalMinutes) {
+  for (
+    let minutes = startMinutes;
+    minutes <= endMinutes;
+    minutes += intervalMinutes
+  ) {
     options.push(`${pad(Math.floor(minutes / 60))}:${pad(minutes % 60)}`)
   }
   return options

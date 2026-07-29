@@ -5,6 +5,7 @@ import {
   assertValidSessionDates,
   getSessionDateOrderError,
   getSessionPublishBlockReason,
+  normalizeSessionMeetingUrl,
 } from './session-validation'
 
 describe('getSessionDateOrderError', () => {
@@ -69,5 +70,22 @@ describe('assertSessionCanBePublished', () => {
     expect(() =>
       assertSessionCanBePublished('2026-07-01T11:00:00Z', new Date('2026-07-01T12:00:00Z'))
     ).toThrow(SESSION_PUBLISH_PAST_END_ERROR)
+  })
+})
+
+describe('normalizeSessionMeetingUrl', () => {
+  it('normalizes an HTTPS meeting URL and accepts an empty value', () => {
+    expect(
+      normalizeSessionMeetingUrl('  https://teams.microsoft.com/l/meetup-join/abc  ')
+    ).toBe('https://teams.microsoft.com/l/meetup-join/abc')
+    expect(normalizeSessionMeetingUrl('')).toBeNull()
+  })
+
+  it('rejects invalid and non-HTTPS URLs', () => {
+    expect(() => normalizeSessionMeetingUrl('not-a-url')).toThrow('valid meeting URL')
+    expect(() => normalizeSessionMeetingUrl('javascript:alert(1)')).toThrow('must use https')
+    expect(() => normalizeSessionMeetingUrl('http://teams.microsoft.com/meeting')).toThrow(
+      'must use https'
+    )
   })
 })

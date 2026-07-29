@@ -14,15 +14,26 @@ export interface InsertSessionInput {
   dateStart: string
   dateEnd: string
   locationType: LocationType
+  teamsMeetingUrl?: string | null
   sessionType?: string | null
   createdBy: string
 }
 
 export async function insertSession(input: InsertSessionInput): Promise<Session> {
+  const sessions = await insertSessions([input])
+  return sessions[0]
+}
+
+/**
+ * One INSERT statement makes recurrence materialisation all-or-nothing: a
+ * failed occurrence does not leave a partially-created series.
+ */
+export async function insertSessions(inputs: InsertSessionInput[]): Promise<Session[]> {
+  if (inputs.length === 0) return []
   const db = await getDb()
   const { data, error } = await db
     .from('sessions')
-    .insert({
+    .insert(inputs.map((input) => ({
       org_id: input.orgId,
       department_id: input.departmentId,
       title: input.title,
@@ -31,17 +42,16 @@ export async function insertSession(input: InsertSessionInput): Promise<Session>
       date_end: input.dateEnd,
       location_type: input.locationType,
       session_type: input.sessionType ?? null,
-      teams_meeting_url: null,
+      teams_meeting_url: input.teamsMeetingUrl ?? null,
       status: 'DRAFT' as SessionStatus,
       tags: null,
       capacity: null,
       created_by: input.createdBy,
-    })
+    })))
     .select()
-    .single()
 
-  if (error) throw toDbError('Failed to create session', error)
-  return data as Session
+  if (error) throw toDbError('Failed to create sessions', error)
+  return (data as Session[] | null) ?? []
 }
 
 export async function listSessionsByOrg(

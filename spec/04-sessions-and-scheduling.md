@@ -50,10 +50,38 @@ Rules enforced by the server:
 - bearer API publish is idempotent when already `PUBLISHED` and blocks an ended
   session.
 
-The interactive date/duration UI normally offers 30–240 minutes, commonly in
-30-minute steps. The server does **not** enforce those duration bounds; it only
-enforces valid dates and `end > start`. Editing preserves exact off-grid
-durations. Teaching slots have their own duration rules below.
+The interactive start-time picker offers quarter-hour values from 08:00 through
+17:30. A stored off-range or off-grid time remains available when editing so an
+unrelated edit never silently shifts it. Browser-entered wall times are
+converted to instants in the browser, and the primary session lists format those
+instants in the viewing browser as well; this avoids a deployment server's UTC
+timezone shifting a British Summer Time listing by one hour.
+
+New interactive sessions offer 30–240 minutes in 30-minute steps plus **Full
+day**, defined as 570 minutes (08:00–17:30). The creation action enforces that
+vocabulary. The general update action continues to enforce valid dates and
+`end > start`, rather than rejecting historical exact/off-grid durations.
+Editing preserves an existing off-grid duration and also offers Full day.
+Teaching slots retain their separate duration rules below.
+
+## Repeating session creation
+
+Interactive creation can materialize up to 52 draft sessions in one operation:
+
+- weekly;
+- every two weeks; or
+- monthly on the same ordinal weekday as the first date, such as the third
+  Friday.
+
+Monthly fifth-weekday patterns skip months without that fifth weekday. The
+browser derives each local wall-clock start before converting it to an instant,
+so a 09:00 series remains at 09:00 across daylight-saving changes. The server
+validates every distinct start and duration, and the DAL inserts the whole set
+with one Postgres statement; a failed row does not leave a partial series.
+
+The resulting rows are deliberately ordinary, independent `DRAFT` sessions.
+There is no persisted recurrence rule or series-wide update/cancel operation;
+each materialized session is edited, published, or cancelled independently.
 
 Session deletion is a moderator operation and cascades or nulls dependent data
 according to migration foreign keys. Deletion is not a soft-cancel and must not
@@ -105,7 +133,11 @@ be joined outside the Petrios UI window if the meeting provider permits it.
 
 The session-management **Overview** tab contains the meeting control. Jitsi
 sessions show the derived guest URL; Teams/hybrid sessions use the editable
-stored URL form. There is no separate Meeting Link tab.
+stored URL form. Interactive creation and the main edit form also accept the
+optional Teams URL when the chosen location is Teams or hybrid, so organisers
+do not need a second edit after creation. User-supplied meeting links are
+trimmed, capped, and must be valid HTTPS URLs. There is no separate Meeting Link
+tab.
 
 ## Registered teacher assignments
 
@@ -399,6 +431,10 @@ A parent slot range must be 30–240 minutes and cannot use a past calendar day.
 It may be split into 10-, 15-, or 20-minute lightning slots. Splitting happens
 after parent validation and drops a trailing remainder shorter than the split
 size. A slot of 20 minutes or less is labelled Lightning.
+
+The slot start-time picker uses the same 08:00–17:30 quarter-hour window as
+session creation. This is a UI default range, not a database restriction on
+historical or API-created slot instants.
 
 The uniqueness constraint prevents another active (`OPEN`/`CLAIMED`) slot at the
 same department/start identity. It does not prohibit differently-starting time

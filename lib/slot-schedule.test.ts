@@ -106,11 +106,19 @@ describe('isLightningSlot', () => {
 })
 
 describe('listSlotTimeOptions', () => {
-  it('covers the day at the interval', () => {
+  it('covers the working day at the interval', () => {
     const options = listSlotTimeOptions(15)
-    expect(options).toHaveLength(96)
-    expect(options[0]).toBe('00:00')
-    expect(options[95]).toBe('23:45')
+    expect(options).toHaveLength(39)
+    expect(options[0]).toBe('08:00')
+    expect(options[38]).toBe('17:30')
+  })
+
+  it('supports an explicit wider range', () => {
+    expect(listSlotTimeOptions(30, '07:00', '08:00')).toEqual([
+      '07:00',
+      '07:30',
+      '08:00',
+    ])
   })
 })
 

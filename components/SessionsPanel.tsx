@@ -4,6 +4,7 @@ import { LOCATION_TYPE_LABELS_SHORT, SESSION_TYPE_LABELS, SESSION_TYPE_COLORS, S
 import type { SessionWithDetails } from '@/lib/db/trainee-dashboard'
 import { Badge } from '@/components/Badge'
 import { CertificateDownloadButton } from '@/components/CertificateDownloadButton'
+import { LocalSessionDateRange } from '@/components/LocalSessionDateTime'
 
 interface SessionsPanelProps {
   upcoming: SessionWithDetails[]
@@ -23,15 +24,6 @@ function SessionCard({ session }: { session: SessionWithDetails }) {
     ? SESSION_TYPE_LABELS[session.session_type]
     : 'General'
 
-  const date = new Date(session.date_start)
-  const endDate = new Date(session.date_end)
-  const dateStr = date.toLocaleDateString('en-GB', {
-    weekday: 'short',
-    day: 'numeric',
-    month: 'short',
-  })
-  const timeStr = `${date.toLocaleTimeString('en-GB', { hour: '2-digit', minute: '2-digit' })} – ${endDate.toLocaleTimeString('en-GB', { hour: '2-digit', minute: '2-digit' })}`
-
   return (
     <Link
       href={`/sessions/${session.id}`}
@@ -44,7 +36,10 @@ function SessionCard({ session }: { session: SessionWithDetails }) {
         </span>
       </div>
       <p className="mt-1 font-mono text-xs text-gray-600">
-        {dateStr} &middot; {timeStr}
+        <LocalSessionDateRange
+          dateStart={session.date_start}
+          dateEnd={session.date_end}
+        />
       </p>
       <div className="mt-2 flex flex-wrap gap-2">
         <span className="font-mono text-xs text-gray-500">

@@ -14,6 +14,7 @@ interface DateTimePickerProps {
   required?: boolean
   /** Time granularity in minutes. Defaults to 15. */
   intervalMinutes?: number
+  onChange?: (value: string) => void
 }
 
 /** Split a default value into local date ('YYYY-MM-DD') and time ('HH:mm') parts. */
@@ -30,6 +31,7 @@ export function DateTimePicker({
   defaultValue,
   required,
   intervalMinutes = 15,
+  onChange,
 }: DateTimePickerProps) {
   const initial = splitDefault(defaultValue)
   const [date, setDate] = useState(initial.date)
@@ -45,6 +47,16 @@ export function DateTimePicker({
 
   const combined = date && time ? `${date}T${time}` : ''
 
+  function updateDate(nextDate: string) {
+    setDate(nextDate)
+    onChange?.(nextDate && time ? `${nextDate}T${time}` : '')
+  }
+
+  function updateTime(nextTime: string) {
+    setTime(nextTime)
+    onChange?.(date && nextTime ? `${date}T${nextTime}` : '')
+  }
+
   return (
     <div className="w-full">
       {label && <label className="block mb-1 text-sm font-mono">{label}</label>}
@@ -52,13 +64,13 @@ export function DateTimePicker({
         <DatePicker
           className="min-w-0 flex-[2]"
           value={date}
-          onChange={setDate}
+          onChange={updateDate}
           ariaLabel={label ? `${label} — date` : 'Date'}
         />
         <div className="min-w-0 flex-1">
           <Select
             value={time}
-            onChange={(e) => setTime(e.target.value)}
+            onChange={(e) => updateTime(e.target.value)}
             required={required}
             aria-label={label ? `${label} — time` : 'Time'}
           >

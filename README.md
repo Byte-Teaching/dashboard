@@ -12,7 +12,7 @@ departments; trainees need accounts, external teachers don't.
   (plus platform-level super admins). Trainees join with a 6-digit
   department code.
 - **Session management**: create, edit, publish, and cancel teaching
-  sessions (30 min–4 h, typed: STEPP / Clinical Skills / Simulation /
+  sessions (30 min–4 h plus a full-day option, typed: STEPP / Clinical Skills / Simulation /
   Academic), with an org-wide calendar and a subscribable ICS feed.
 - **Petrios Meet video**: sessions can use a built-in Jitsi video room —
   auto-generated per session (nothing to paste), embedded on the session

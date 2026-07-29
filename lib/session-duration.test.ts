@@ -1,17 +1,48 @@
 import { describe, expect, it } from 'vitest'
 import {
+  FULL_DAY_SESSION_DURATION_MINS,
   MAX_SESSION_DURATION_MINS,
   MIN_SESSION_DURATION_MINS,
   computeDateEnd,
   durationFromDates,
   exactDurationFromDates,
   formatDuration,
+  isAllowedNewSessionDuration,
   listDurationOptions,
 } from './session-duration'
 
 describe('listDurationOptions', () => {
   it('runs 30..240 in 30-minute steps', () => {
     expect(listDurationOptions()).toEqual([30, 60, 90, 120, 150, 180, 210, 240])
+  })
+
+  it('adds the full-day option only when requested', () => {
+    expect(listDurationOptions(true)).toEqual([
+      30,
+      60,
+      90,
+      120,
+      150,
+      180,
+      210,
+      240,
+      FULL_DAY_SESSION_DURATION_MINS,
+    ])
+  })
+})
+
+describe('isAllowedNewSessionDuration', () => {
+  it('accepts the regular grid and full-day duration', () => {
+    expect(isAllowedNewSessionDuration(30)).toBe(true)
+    expect(isAllowedNewSessionDuration(240)).toBe(true)
+    expect(isAllowedNewSessionDuration(FULL_DAY_SESSION_DURATION_MINS)).toBe(true)
+  })
+
+  it('rejects off-grid, non-finite, and out-of-range values', () => {
+    expect(isAllowedNewSessionDuration(45)).toBe(false)
+    expect(isAllowedNewSessionDuration(0)).toBe(false)
+    expect(isAllowedNewSessionDuration(300)).toBe(false)
+    expect(isAllowedNewSessionDuration(Number.NaN)).toBe(false)
   })
 })
 

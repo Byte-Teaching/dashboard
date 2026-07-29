@@ -47,3 +47,24 @@ export function assertSessionCanBePublished(dateEnd: string, now = new Date()) {
     throw new Error(error)
   }
 }
+
+export function normalizeSessionMeetingUrl(value: string | null | undefined) {
+  const trimmed = value?.trim() ?? ''
+  if (!trimmed) return null
+  if (trimmed.length > 2048) {
+    throw new Error('Meeting URL is too long')
+  }
+
+  let parsed: URL
+  try {
+    parsed = new URL(trimmed)
+  } catch {
+    throw new Error('Enter a valid meeting URL')
+  }
+
+  if (parsed.protocol !== 'https:') {
+    throw new Error('Meeting URL must use https')
+  }
+
+  return parsed.toString()
+}

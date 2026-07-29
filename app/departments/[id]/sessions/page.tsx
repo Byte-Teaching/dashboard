@@ -7,14 +7,18 @@ import { getDepartment } from '@/app/actions/departments'
 import Link from 'next/link'
 import { Button } from '@/components/Button'
 import { DeleteSessionButton } from '@/components/DeleteSessionButton'
+import { LocalDateTime } from '@/components/LocalSessionDateTime'
 
 export default async function DepartmentSessionsPage(
   props: {
     params: Promise<{ id: string }>
+    searchParams: Promise<{ created?: string }>
   }
 ) {
   const params = await props.params;
+  const searchParams = await props.searchParams
   const user = await getCurrentUser()
+  const createdCount = Number(searchParams.created)
 
   if (!user) {
     redirect('/login')
@@ -55,6 +59,14 @@ export default async function DepartmentSessionsPage(
           )}
         </div>
 
+        {Number.isInteger(createdCount) && createdCount > 0 ? (
+          <div className="mb-4 border border-green-800 bg-green-50 p-4">
+            <p className="font-mono text-sm text-green-900">
+              {createdCount} draft session{createdCount === 1 ? '' : 's'} created.
+            </p>
+          </div>
+        ) : null}
+
         {sessions.length === 0 ? (
           <Card>
             <p className="font-mono text-sm">No sessions yet.</p>
@@ -75,7 +87,7 @@ export default async function DepartmentSessionsPage(
                     )}
                     <div className="flex flex-wrap gap-x-4 gap-y-2 font-mono text-sm">
                       <span>
-                        {new Date(session.date_start).toLocaleString('en-GB')}
+                        <LocalDateTime value={session.date_start} />
                       </span>
                       <span className="text-gray-600">{session.location_type}</span>
                       <span className={`px-2 py-1 border ${

@@ -29,6 +29,7 @@ import type { SessionDocument } from '@/lib/db/session-documents'
 import { SessionDocumentsPanel } from './SessionDocumentsPanel'
 import type { AttendanceEvidence, SessionParticipant } from '@/lib/db/attendance'
 import { SessionAttendanceManagementPanel } from './SessionAttendanceManagementPanel'
+import { LocalDateTime } from './LocalSessionDateTime'
 
 interface ManageSessionTabsProps {
   session: Session
@@ -131,7 +132,10 @@ export function ManageSessionTabs({
                 <div className="space-y-2 font-mono text-sm">
                   <p><strong>Title:</strong> {session.title}</p>
                   <p className="break-words">
-                    <strong>Date:</strong> <span className="block sm:inline">{new Date(session.date_start).toLocaleString('en-GB')}</span>
+                    <strong>Date:</strong>{' '}
+                    <span className="block sm:inline">
+                      <LocalDateTime value={session.date_start} />
+                    </span>
                   </p>
                   <p>
                     <strong>Duration:</strong>{' '}

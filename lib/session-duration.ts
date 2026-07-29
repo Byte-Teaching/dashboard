@@ -8,9 +8,11 @@
 export const DURATION_STEP_MINS = 30
 export const MIN_SESSION_DURATION_MINS = 30
 export const MAX_SESSION_DURATION_MINS = 240
+/** 08:00–17:30, matching the full working-day scheduling window. */
+export const FULL_DAY_SESSION_DURATION_MINS = 570
 
 /** [30, 60, ..., 240] */
-export function listDurationOptions(): number[] {
+export function listDurationOptions(includeFullDay = false): number[] {
   const options: number[] = []
   for (
     let mins = MIN_SESSION_DURATION_MINS;
@@ -19,7 +21,18 @@ export function listDurationOptions(): number[] {
   ) {
     options.push(mins)
   }
+  if (includeFullDay) options.push(FULL_DAY_SESSION_DURATION_MINS)
   return options
+}
+
+export function isAllowedNewSessionDuration(mins: number): boolean {
+  return (
+    (Number.isInteger(mins) &&
+      mins >= MIN_SESSION_DURATION_MINS &&
+      mins <= MAX_SESSION_DURATION_MINS &&
+      mins % DURATION_STEP_MINS === 0) ||
+    mins === FULL_DAY_SESSION_DURATION_MINS
+  )
 }
 
 /** '30 minutes', '1 hour', '1 hour 30 minutes', '2 hours', ... */
